@@ -1,27 +1,15 @@
 package study.querydsl;
 
-import static com.querydsl.jpa.JPAExpressions.*;
-import static org.assertj.core.api.Assertions.assertThat;
-import static study.querydsl.entity.QMember.member;
-import static study.querydsl.entity.QTeam.team;
-
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.Tuple;
-import com.querydsl.core.types.Expression;
 import com.querydsl.core.types.ExpressionUtils;
 import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
-
-import java.util.List;
-import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.PersistenceUnit;
-
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +21,16 @@ import study.querydsl.dto.UserDto;
 import study.querydsl.entity.Member;
 import study.querydsl.entity.QMember;
 import study.querydsl.entity.Team;
+
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.PersistenceUnit;
+import java.util.List;
+
+import static com.querydsl.jpa.JPAExpressions.select;
+import static org.assertj.core.api.Assertions.assertThat;
+import static study.querydsl.entity.QMember.member;
+import static study.querydsl.entity.QTeam.team;
 
 @SpringBootTest
 @Transactional
@@ -607,7 +605,7 @@ public class QuerydslBasicTest {
     }
 
     @Test
-    public void DynamicQuery_BooleanBuilder(){
+    public void DynamicQuery_BooleanBuilder() {
         String usernameParam = "member1";
         Integer ageParam = null;
 
@@ -618,11 +616,11 @@ public class QuerydslBasicTest {
     private List<Member> searchMember1(String usernameCond, Integer ageCond) {
         BooleanBuilder builder = new BooleanBuilder();
 
-        if(usernameCond != null){
+        if (usernameCond != null) {
             builder.and(member.username.eq(usernameCond));
         }
 
-        if(ageCond != null){
+        if (ageCond != null) {
             builder.and(member.age.eq(ageCond));
         }
         return queryFactory
@@ -631,5 +629,34 @@ public class QuerydslBasicTest {
                 .fetch();
     }
 
+    @Test
+    public void dynamicQuery_WhereParam() {
+        String usernameParam = "member1";
+        Integer ageParam = null;
 
+        List<Member> result = searchMember2(usernameParam, ageParam);
+        assertThat(result.size()).isEqualTo(4);
+    }
+
+    // 동적 쿼리, where 다중 파라미터
+    @Test
+    private List<Member> searchMember2(String usernameCond, Integer ageCond) {
+        return queryFactory
+                .selectFrom(member)
+//                .where(uernameEq(usernameCond), ageEq(ageCond))
+                .where(allEq(usernameCond, ageCond))
+                .fetch();
+    }
+
+    private BooleanExpression uernameEq(String usernameCond) {
+        return usernameCond != null ? member.username.eq(usernameCond) : null;
+    }
+
+    private BooleanExpression ageEq(Integer ageCond) {
+        return ageCond != null ? member.age.eq(ageCond) : null;
+    }
+
+    public BooleanExpression allEq(String usernameCond, Integer ageCond) {
+        return uernameEq(usernameCond).and(ageEq(ageCond));
+    }
 }

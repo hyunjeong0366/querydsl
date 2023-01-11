@@ -659,4 +659,75 @@ public class QuerydslBasicTest {
     public BooleanExpression allEq(String usernameCond, Integer ageCond) {
         return uernameEq(usernameCond).and(ageEq(ageCond));
     }
+
+    /**
+     * bulk 연산
+     * 영속성 컨텍스의 1차 캐시를 거치지 않고 바로 query를 보낸다.
+     */
+    @Test
+    public void bulkUpdate() {
+        long count = queryFactory
+                .update(member)
+                .set(member.username, "비회원")
+                .where(member.age.eq(28))
+                .execute();
+
+        // bulk 연산 후, select 하면 영속성 컨텍스트에 남아있는 데이터랑 불일치함 -> flush, clear 필요
+        em.flush();
+        em.clear();
+
+        List<Member> members = queryFactory
+                .selectFrom(member)
+                .fetch();
+
+        for (Member member : members) {
+            System.out.println("member = " + member);
+        }
+    }
+
+    @Test
+    public void bulkAdd() {
+        long count = queryFactory
+                .update(member)
+                .set(member.age, member.age.add(1))
+                .execute();
+    }
+
+    @Test
+    public void buildDelete() {
+        long count = queryFactory
+                .delete(member)
+                .where(member.age.gt(18))
+                .execute();
+    }
+
+    @Test
+    public void sqlFunction() {
+        List<String> result = queryFactory
+                .select(Expressions.stringTemplate("function('replace', {0}, {1}, {2})",
+                        member.username, "member", "M"))
+                .from(member)
+                .fetch();
+
+        for (String s : result) {
+            System.out.println("s = " + s);
+        }
+    }
+
+    @Test
+    public void sqlFunction2() {
+        List<String> result = queryFactory
+                .select(member.username)
+                .from(member)
+//                .where(member.username.eq(
+//                        Expressions.stringTemplate("function('lower', {0})", member.username)))
+                .where(member.username.eq(member.username.lower()))
+                .fetch();
+
+
+        for (String s : result) {
+            System.out.println("s = " + s);
+
+        }
+    }
 }
